@@ -1,6 +1,7 @@
 using EsportsAPI.Data;
 using EsportsAPI.DTOs;
 using EsportsAPI.Entities;
+using EsportsAPI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,27 +11,17 @@ namespace EsportsAPI.Controllers;
 [Route("[controller]")]
 public class TournamentController : ControllerBase
 {
-    private readonly EsportsDbContext _context;
+    private readonly ITournamentService _service;
 
-    public TournamentController(EsportsDbContext context)
+    public TournamentController(ITournamentService service)
     {
-        _context = context;
+        _service = service;
     }
 
     [HttpGet]
     public async Task<ActionResult<List<TournamentDto>>> GetTournaments()
     {
-        var tournaments = await _context.Tournaments.ToListAsync();
-
-        var tournamentDtos = tournaments.Select(tournament => new TournamentDto
-        {
-            Id = tournament.Id,
-            Name = tournament.Name,
-            GameTitle = tournament.GameTitle,
-            Status = tournament.Status,
-            MaxTeams = tournament.MaxTeams,
-            StartDate = tournament.StartDate
-        }).ToList();
+        var tournamentDtos = await _service.GetAll();
 
         return Ok(tournamentDtos);
     }
@@ -38,22 +29,9 @@ public class TournamentController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<TournamentDto>> GetTournament(int id)
     {
-        var tournament = await _context.Tournaments.FindAsync(id);
+        var tournamentDto = await _service.GetById(id);
 
-        if (tournament == null)
-        {
-            return NotFound();
-        }
-
-        var tournamentDto = new TournamentDto
-        {
-            Id = tournament.Id,
-            Name = tournament.Name,
-            GameTitle = tournament.GameTitle,
-            Status = tournament.Status,
-            MaxTeams = tournament.MaxTeams,
-            StartDate = tournament.StartDate
-        };
+        if (tournamentDto == null) return NotFound();
 
         return Ok(tournamentDto);
     }
@@ -61,27 +39,8 @@ public class TournamentController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<TournamentDto>> CreateTournament(CreateTournamentDto incomingTournament)
     {
-        var tournament = new Tournament
-        {
-            Name = incomingTournament.Name,
-            GameTitle = incomingTournament.GameTitle,
-            MaxTeams = incomingTournament.MaxTeams,
-            StartDate = incomingTournament.StartDate.Value
-        };
+        var tournamentToReturn = await _service.Create(incomingTournament);
 
-        _context.Tournaments.Add(tournament);
-        await _context.SaveChangesAsync();
-
-        var tournamentToReturn = new TournamentDto
-        {
-            Id = tournament.Id,
-            Name = tournament.Name,
-            GameTitle = tournament.GameTitle,
-            Status = tournament.Status,
-            MaxTeams = tournament.MaxTeams,
-            StartDate = tournament.StartDate
-        };
-
-        return CreatedAtAction(nameof(GetTournament), new { id = tournament.Id }, tournamentToReturn);
+        return CreatedAtAction(nameof(GetTournament), new { id = tournamentToReturn.Id }, tournamentToReturn);
     }
 }
