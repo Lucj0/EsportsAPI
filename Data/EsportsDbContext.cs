@@ -10,4 +10,6 @@ public class EsportsDbContext : DbContext
     }
 
     public DbSet<Tournament> Tournaments { get; set; }
+
+    public DbSet<Team> Teams { get; set; }
 }
