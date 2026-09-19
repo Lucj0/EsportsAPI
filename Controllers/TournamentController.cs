@@ -43,4 +43,46 @@ public class TournamentController : ControllerBase
 
         return CreatedAtAction(nameof(GetTournament), new { id = tournamentToReturn.Id }, tournamentToReturn);
     }
+
+    [HttpPost("{id}/lock")]
+    public async Task<ActionResult<TransitionResultStatus>> Lock(int id)
+    {
+        var transitionStatus = await _service.Lock(id);
+
+        return transitionStatus switch
+        {
+            TransitionResultStatus.NotAllowed => Conflict("Cannot lock this tournament"),
+            TransitionResultStatus.TournamentNotFound => NotFound("Tournament Not Found"),
+            TransitionResultStatus.Success => Ok(transitionStatus),
+            _ => StatusCode(500, "Unexpected Error")
+        };
+    }
+
+    [HttpPost("{id}/start")]
+    public async Task<ActionResult<TransitionResultStatus>> Start(int id)
+    {
+        var transitionStatus = await _service.Start(id);
+
+        return transitionStatus switch
+        {
+            TransitionResultStatus.NotAllowed => Conflict("Cannot start this tournament"),
+            TransitionResultStatus.TournamentNotFound => NotFound("Tournament Not Found"),
+            TransitionResultStatus.Success => Ok(transitionStatus),
+            _ => StatusCode(500, "Unexpected Error")
+        };
+    }
+
+    [HttpPost("{id}/complete")]
+    public async Task<ActionResult<TransitionResultStatus>> Complete(int id)
+    {
+        var transitionStatus = await _service.Complete(id);
+
+        return transitionStatus switch
+        {
+            TransitionResultStatus.NotAllowed => Conflict("Cannot complete this tournament"),
+            TransitionResultStatus.TournamentNotFound => NotFound("Tournament Not Found"),
+            TransitionResultStatus.Success => Ok(transitionStatus),
+            _ => StatusCode(500, "Unexpected Error")
+        };
+    }
 }

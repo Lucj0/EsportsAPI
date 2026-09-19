@@ -1,5 +1,3 @@
-
-
 using EsportsAPI.DTOs;
 using EsportsAPI.Services;
 using Microsoft.AspNetCore.Mvc;

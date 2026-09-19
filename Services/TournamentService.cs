@@ -2,6 +2,7 @@ using EsportsAPI.Data;
 using EsportsAPI.DTOs;
 using EsportsAPI.Entities;
 using EsportsAPI.Services;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace EsportsAPI.Services;
@@ -78,5 +79,67 @@ public class TournamentService : ITournamentService
         return tournamentToReturn;
     }
 
+    public async Task<TransitionResultStatus> Lock(int id)
+    {
+        var tournament = await _context.Tournaments.FindAsync(id);
+
+        if (tournament == null)
+        {
+            return TransitionResultStatus.TournamentNotFound;
+        }
+
+        if (tournament.Status != TournamentStatus.Registration)
+        {
+            return TransitionResultStatus.NotAllowed;
+        }
+
+        tournament.Status = TournamentStatus.Locked;
+
+        await _context.SaveChangesAsync();
+
+        return TransitionResultStatus.Success;
+    }
+
+    public async Task<TransitionResultStatus> Start(int id)
+    {
+        var tournament = await _context.Tournaments.FindAsync(id);
+
+        if (tournament == null)
+        {
+            return TransitionResultStatus.TournamentNotFound;
+        }
+
+        if (tournament.Status != TournamentStatus.Locked)
+        {
+            return TransitionResultStatus.NotAllowed;
+        }
+
+        tournament.Status = TournamentStatus.InProgress;
+
+        await _context.SaveChangesAsync();
+
+        return TransitionResultStatus.Success;
+    }
+
+    public async Task<TransitionResultStatus> Complete(int id)
+    {
+        var tournament = await _context.Tournaments.FindAsync(id);
+
+        if (tournament == null)
+        {
+            return TransitionResultStatus.TournamentNotFound;
+        }
+
+        if (tournament.Status != TournamentStatus.InProgress)
+        {
+            return TransitionResultStatus.NotAllowed;
+        }
+
+        tournament.Status = TournamentStatus.Complete;
+
+        await _context.SaveChangesAsync();
+
+        return TransitionResultStatus.Success;
+    }
 
 }
