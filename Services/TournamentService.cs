@@ -84,16 +84,29 @@ public class TournamentService : ITournamentService
         var tournament = await _context.Tournaments.FindAsync(id);
 
         if (tournament == null)
-        {
             return TransitionResultStatus.TournamentNotFound;
-        }
 
         if (tournament.Status != TournamentStatus.Registration)
-        {
             return TransitionResultStatus.NotAllowed;
-        }
+
+        var registrations = await _context.Registrations
+            .Where(r => r.TournamentId == tournament.Id)
+            .ToListAsync();
+
+        if (registrations.Count == 0)
+            return TransitionResultStatus.EmptyTournament;
+
+        if (registrations.Count % 2 != 0)
+            return TransitionResultStatus.OddTeamCount;
 
         tournament.Status = TournamentStatus.Locked;
+
+        var shuffled = registrations.OrderBy(r => Random.Shared.Next()).ToList();
+
+        for (int i = 0; i < shuffled.Count; i++)
+        {
+            shuffled[i].Seed = i + 1;
+        }
 
         await _context.SaveChangesAsync();
 
@@ -102,44 +115,28 @@ public class TournamentService : ITournamentService
 
     public async Task<TransitionResultStatus> Start(int id)
     {
-        var tournament = await _context.Tournaments.FindAsync(id);
-
-        if (tournament == null)
-        {
-            return TransitionResultStatus.TournamentNotFound;
-        }
-
-        if (tournament.Status != TournamentStatus.Locked)
-        {
-            return TransitionResultStatus.NotAllowed;
-        }
-
-        tournament.Status = TournamentStatus.InProgress;
-
-        await _context.SaveChangesAsync();
-
-        return TransitionResultStatus.Success;
+        return await Transition(id, TournamentStatus.Locked, TournamentStatus.InProgress);
     }
 
     public async Task<TransitionResultStatus> Complete(int id)
     {
+        return await Transition(id, TournamentStatus.InProgress, TournamentStatus.Complete);
+    }
+
+    private async Task<TransitionResultStatus> Transition(int id, TournamentStatus required, TournamentStatus desired)
+    {
         var tournament = await _context.Tournaments.FindAsync(id);
 
         if (tournament == null)
-        {
             return TransitionResultStatus.TournamentNotFound;
-        }
 
-        if (tournament.Status != TournamentStatus.InProgress)
-        {
+        if (tournament.Status != required)
             return TransitionResultStatus.NotAllowed;
-        }
 
-        tournament.Status = TournamentStatus.Complete;
+        tournament.Status = desired;
 
         await _context.SaveChangesAsync();
 
         return TransitionResultStatus.Success;
     }
-
 }

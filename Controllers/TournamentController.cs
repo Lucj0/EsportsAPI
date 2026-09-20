@@ -53,6 +53,8 @@ public class TournamentController : ControllerBase
         {
             TransitionResultStatus.NotAllowed => Conflict("Cannot lock this tournament"),
             TransitionResultStatus.TournamentNotFound => NotFound("Tournament Not Found"),
+            TransitionResultStatus.EmptyTournament => Conflict("Tournament is empty"),
+            TransitionResultStatus.OddTeamCount => Conflict("Cannot start tournament with odd number of teams"),
             TransitionResultStatus.Success => Ok(transitionStatus),
             _ => StatusCode(500, "Unexpected Error")
         };
