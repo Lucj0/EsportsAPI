@@ -33,4 +33,15 @@ public class RegistrationController : ControllerBase
             _ => StatusCode(500, "Unexpected error")  
         };
     }
+
+    [HttpGet("{tournamentId}")]
+    public async Task<ActionResult<List<RegistrationDto>>> GetRegisteredTeams(int tournamentId)
+    {
+        var result = await _service.GetRegisteredTeams(tournamentId);
+
+        if (result == null)
+            return NotFound();
+
+        return Ok(result);
+    }
 }

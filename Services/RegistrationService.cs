@@ -82,7 +82,32 @@ public class RegistrationService : IRegistrationService
         registrationResult.Dto = registrationDto;
 
         return registrationResult;
+    }
 
+    public async Task<List<RegistrationDto>?> GetRegisteredTeams(int tournamentId)
+    {
+        var tournament = await _context.Tournaments.FindAsync(tournamentId);
 
+        if (tournament == null)
+            return null;
+
+        var registrations = await _context.Registrations
+            .Where(r => r.TournamentId == tournamentId)
+            .Include(r => r.Tournament)
+            .Include(r => r.Team)
+            .ToListAsync();
+
+        var registrationDtos = registrations.Select(registration => new RegistrationDto
+        {
+            Id = registration.Id,
+            TournamentId = registration.TournamentId,
+            TournamentName = registration.Tournament.Name,
+            TeamId = registration.TeamId,
+            TeamName = registration.Team.Name,
+            RegisteredAt = registration.RegisteredAt,
+            Seed = registration.Seed
+        }).ToList();
+
+        return registrationDtos;
     }
 }
