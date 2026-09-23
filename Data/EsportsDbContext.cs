@@ -14,4 +14,6 @@ public class EsportsDbContext : DbContext
     public DbSet<Team> Teams { get; set; }
 
     public DbSet<Registration> Registrations { get; set; }
+
+    public DbSet<User> Users { get; set; }
 }

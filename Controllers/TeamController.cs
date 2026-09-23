@@ -1,5 +1,6 @@
 using EsportsAPI.DTOs;
 using EsportsAPI.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EsportsAPI.Controllers;
@@ -35,6 +36,7 @@ public class TeamController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Organizer")]
     public async Task<ActionResult<TeamDto>> CreateTeam(CreateTeamDto incomingTeam)
     {
         var teamToReturn = await _service.CreateTeam(incomingTeam);

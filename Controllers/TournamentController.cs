@@ -2,6 +2,7 @@ using EsportsAPI.Data;
 using EsportsAPI.DTOs;
 using EsportsAPI.Entities;
 using EsportsAPI.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -37,6 +38,7 @@ public class TournamentController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Organizer")]
     public async Task<ActionResult<TournamentDto>> CreateTournament(CreateTournamentDto incomingTournament)
     {
         var tournamentToReturn = await _service.Create(incomingTournament);
@@ -45,6 +47,7 @@ public class TournamentController : ControllerBase
     }
 
     [HttpPost("{id}/lock")]
+    [Authorize(Roles = "Organizer")]
     public async Task<ActionResult<TransitionResultStatus>> Lock(int id)
     {
         var transitionStatus = await _service.Lock(id);
@@ -61,6 +64,7 @@ public class TournamentController : ControllerBase
     }
 
     [HttpPost("{id}/start")]
+    [Authorize(Roles = "Organizer")]
     public async Task<ActionResult<TransitionResultStatus>> Start(int id)
     {
         var transitionStatus = await _service.Start(id);
@@ -75,6 +79,7 @@ public class TournamentController : ControllerBase
     }
 
     [HttpPost("{id}/complete")]
+    [Authorize(Roles = "Organizer")]
     public async Task<ActionResult<TransitionResultStatus>> Complete(int id)
     {
         var transitionStatus = await _service.Complete(id);

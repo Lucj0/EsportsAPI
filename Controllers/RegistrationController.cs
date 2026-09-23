@@ -1,6 +1,7 @@
 using EsportsAPI.DTOs;
 using EsportsAPI.Entities;
 using EsportsAPI.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EsportsAPI.Controllers;
@@ -18,6 +19,7 @@ public class RegistrationController : ControllerBase
     }
 
     [HttpPost("{tournamentId}/{teamId}")]
+    [Authorize]
     public async Task<ActionResult<RegistrationDto>> RegisterTeam(int tournamentId, int teamId)
     {
         var result = await _service.RegisterTeam(tournamentId, teamId);
