@@ -8,12 +8,14 @@ A RESTful esports tournament management API built with ASP.NET Core and EF Core.
 - Teams register into tournaments, subject to real rules (capacity, duplicates, registration window).
 - Tournaments move through a defined lifecycle where only legal state transitions are allowed.
 - Locking a tournament closes registration and randomly assigns bracket seeds.
+- Access is controlled by JWT authentication with role-based authorization (organizers vs. participants).
 
 ## Tech stack
 
 - ASP.NET Core (.NET 10), controller-based Web API
 - Entity Framework Core (code-first) with SQL Server
 - SQL Server 2022 running in Docker via Docker Compose
+- JWT bearer authentication with role-based authorization, with BCrypt-hashed passwords
 - Scalar for interactive API documentation
 - Secrets managed with .NET user-secrets and a local `.env` file, so no credentials live in source control
 
@@ -27,6 +29,20 @@ The project uses a layered architecture so each concern has one home:
 - **EF Core DbContext** is the data layer. Entities map to tables through code-first migrations.
 
 Domain outcomes are communicated across the service boundary with a result pattern: services return a status enum (and a DTO on success) rather than throwing exceptions or speaking HTTP, and the controller maps each outcome to the right response.
+
+## Authentication and authorization
+
+The API uses JWT bearer authentication. A user registers (their password is hashed with BCrypt and never stored in plain text) and logs in; on a successful login the API returns a signed JWT carrying the user's id, username, and role. The client sends that token as an `Authorization: Bearer <token>` header on later requests, and the API validates the signature and expiry and reads the role claim to authorize the action.
+
+Two roles gate access:
+
+- **Organizer**: create tournaments and teams, and drive the lifecycle (lock, start, complete).
+- **Participant**: register a team into a tournament.
+- **Public**: read endpoints (list and get) require no token.
+
+Registration always creates a Participant; the role is never accepted from the client. An existing user can be promoted to Organizer through a dedicated endpoint by supplying a shared secret key held in configuration. Because a JWT is issued at login, a role change takes effect on the user's next login.
+
+Unauthenticated requests to protected endpoints return `401 Unauthorized`; authenticated requests without the required role return `403 Forbidden`.
 
 ## Domain model
 
@@ -62,37 +78,47 @@ Outcomes map to HTTP status codes:
 | Outcome | Status code |
 | --- | --- |
 | Success | 200 / 201 |
+| Unauthenticated (missing or invalid token) | 401 |
+| Insufficient role | 403 |
 | Resource not found | 404 |
 | Rule violation or illegal state transition | 409 |
 | Invalid input (validation) | 400 |
 
 ## API endpoints
 
+**Auth**
+
+| Method | Route | Access | Purpose |
+| --- | --- | --- | --- |
+| POST | `/Auth/register` | Public | Register a new user (created as a Participant) |
+| POST | `/Auth/login` | Public | Log in and receive a JWT |
+| POST | `/Auth/promote` | Authenticated | Promote the current user to Organizer with a secret key |
+
 **Tournaments**
 
-| Method | Route | Purpose |
-| --- | --- | --- |
-| GET | `/Tournament` | List all tournaments |
-| GET | `/Tournament/{id}` | Get one tournament |
-| POST | `/Tournament` | Create a tournament |
-| POST | `/Tournament/{id}/lock` | Lock registration and assign seeds |
-| POST | `/Tournament/{id}/start` | Move a locked tournament to in progress |
-| POST | `/Tournament/{id}/complete` | Complete an in-progress tournament |
+| Method | Route | Access | Purpose |
+| --- | --- | --- | --- |
+| GET | `/Tournament` | Public | List all tournaments |
+| GET | `/Tournament/{id}` | Public | Get one tournament |
+| POST | `/Tournament` | Organizer | Create a tournament |
+| POST | `/Tournament/{id}/lock` | Organizer | Lock registration and assign seeds |
+| POST | `/Tournament/{id}/start` | Organizer | Move a locked tournament to in progress |
+| POST | `/Tournament/{id}/complete` | Organizer | Complete an in-progress tournament |
 
 **Teams**
 
-| Method | Route | Purpose |
-| --- | --- | --- |
-| GET | `/Team` | List all teams |
-| GET | `/Team/{id}` | Get one team |
-| POST | `/Team` | Create a team |
+| Method | Route | Access | Purpose |
+| --- | --- | --- | --- |
+| GET | `/Team` | Public | List all teams |
+| GET | `/Team/{id}` | Public | Get one team |
+| POST | `/Team` | Organizer | Create a team |
 
 **Registrations**
 
-| Method | Route | Purpose |
-| --- | --- | --- |
-| GET | `/Registration/{tournamentId}` | List a tournament's registrations, including seeds |
-| POST | `/Registration/{tournamentId}/{teamId}` | Register a team into a tournament |
+| Method | Route | Access | Purpose |
+| --- | --- | --- | --- |
+| GET | `/Registration/{tournamentId}` | Public | List a tournament's registrations, including seeds |
+| POST | `/Registration/{tournamentId}/{teamId}` | Participant | Register a team into a tournament |
 
 ## Getting started
 
@@ -125,13 +151,18 @@ Then store the connection string in user-secrets, using the same password:
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Server=localhost,1433;Database=EsportsDb;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True"
 ```
 
+Also set the JWT signing key (used to sign and validate tokens) and the organizer promotion key:
+
+```bash
+dotnet user-secrets set "Jwt:Key" "a-long-random-secret-at-least-32-characters"
+dotnet user-secrets set "Auth:OrganizerKey" "your-organizer-promotion-key"
+```
+
 ### 3. Start the database
 
 ```bash
 docker compose up -d
 ```
-
-SQL Server takes 20 to 30 seconds to finish starting the first time.
 
 ### 4. Apply migrations
 
