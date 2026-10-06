@@ -120,6 +120,26 @@ Outcomes map to HTTP status codes:
 | GET | `/Registration/{tournamentId}` | Public | List a tournament's registrations, including seeds |
 | POST | `/Registration/{tournamentId}/{teamId}` | Participant | Register a team into a tournament |
 
+## Testing
+
+The project has two layers of automated tests, split along the testing pyramid.
+
+**Unit tests** cover the service-layer business rules in isolation, running against EF Core's in-memory provider so they are fast and need no database. They exercise the registration guards (capacity, duplicates, registration window) and the lock logic, including the random bracket seeding.
+
+**Integration tests** drive the full HTTP pipeline, routing, authentication, authorization, controllers, and data access, using `WebApplicationFactory`. Instead of a stand-in database they run against a real SQL Server instance started in a throwaway Docker container via Testcontainers, so the tests hit the same database engine the app uses for real. These cover the JWT auth gate on tournament creation: `401` with no token, `403` for a Participant, and `201` for an Organizer.
+
+### Running the tests
+
+```bash
+dotnet test
+```
+
+Docker must be running, because the integration tests start a SQL Server container. The first run is slower while that image is pulled.
+
+### Continuous integration
+
+Every push runs the full suite through a GitHub Actions workflow (`.github/workflows/ci.yml`) on an Ubuntu runner, which has Docker available for Testcontainers. A red build flags a broken test before it reaches anyone else.
+
 ## Getting started
 
 ### Prerequisites
