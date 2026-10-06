@@ -5,7 +5,7 @@ using EsportsAPI.Entities;
 using EsportsAPI.Services;
 using Microsoft.EntityFrameworkCore;
 
-namespace EsportsAPi.Tests;
+namespace EsportsApi.Tests;
 
 public class RegistrationServiceTests
 {
